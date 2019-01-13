@@ -34,9 +34,11 @@ def encrypt_message(K, message):
     """ Encrypt a message under a key K """
 
     plaintext = message.encode("utf8")
-    
     ## YOUR CODE HERE
-
+    aes = Cipher("aes-128-gcm")
+    iv = urandom(16)
+    #key = urandom(16)
+    ciphertext, tag = aes.quick_gcm_enc(K, iv, plaintext)
     return (iv, ciphertext, tag)
 
 def decrypt_message(K, iv, ciphertext, tag):
@@ -45,8 +47,15 @@ def decrypt_message(K, iv, ciphertext, tag):
         In case the decryption fails, throw an exception.
     """
     ## YOUR CODE HERE
+    plain = ''
+    aes = Cipher("aes-128-gcm")
+    try:    
+        plain = aes.quick_gcm_dec(K, iv, ciphertext,tag)
+        plain = plain.decode("utf8")
+    except:
+        raise Exception('decryption failed')
 
-    return plain.encode("utf8")
+    return plain
 
 #####################################################
 # TASK 3 -- Understand Elliptic Curve Arithmetic
