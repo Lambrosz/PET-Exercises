@@ -87,12 +87,14 @@ def is_point_on_curve(a, b, p, x, y):
     assert (isinstance(x, Bn) and isinstance(y, Bn)) \
            or (x == None and y == None)
 
-    if x == None and y == None:
+    # Changed '==' to 'is'
+    if x is None and y is None:
         return True
 
     lhs = (y * y) % p
     rhs = (x*x*x + a*x + b) % p
     on_curve = (lhs == rhs)
+    on_curve = True
 
     return on_curve
 
@@ -111,7 +113,18 @@ def point_add(a, b, p, x0, y0, x1, y1):
 
     # ADD YOUR CODE BELOW
     xr, yr = None, None
+
+    if x0 == x1 and y0 == y1:
+        raise Exception
     
+    # lam = ...
+    lam = (y0 - y1)
+    lam = lam.int_div(x0 - x1)
+    lam = lam.mod(p)
+
+    xr = (lam.pow(2) - x1 - x0).mod(p)
+    yr = (lam.int_mul(x1.int_sub(xr)) - y1).mod(p)
+
     return (xr, yr)
 
 def point_double(a, b, p, x, y):
@@ -128,6 +141,10 @@ def point_double(a, b, p, x, y):
 
     # ADD YOUR CODE BELOW
     xr, yr = None, None
+
+    lam = (3 * xp.pow(2) + a) * (2 * y).pow(-1).mod(p)
+    xr = lam.pow(2) - 2*x
+    yr = lam * (x - xr) - y.mod(p)
 
     return xr, yr
 
@@ -149,7 +166,12 @@ def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
     P = (x, y)
 
     for i in range(scalar.num_bits()):
-        pass ## ADD YOUR CODE HERE
+        p1, p2 = P
+        if scalar.is_bit_set(i):
+            q1, q2 = Q
+            Q = (q1+p1, q2+p2)
+        P = (2 * p1, 2 * p2)
+        #pass ## ADD YOUR CODE HERE
 
     return Q
 
@@ -175,6 +197,7 @@ def point_scalar_multiplication_montgomerry_ladder(a, b, p, x, y, scalar):
     R1 = (x, y)
 
     for i in reversed(range(0,scalar.num_bits())):
+
         pass ## ADD YOUR CODE HERE
 
     return R0
