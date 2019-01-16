@@ -88,14 +88,13 @@ def is_point_on_curve(a, b, p, x, y):
            or (x == None and y == None)
 
     # Changed '==' to 'is'
-    if x is None and y is None:
+    if x == None and == None:
         return True
 
     lhs = (y * y) % p
     rhs = (x*x*x + a*x + b) % p
     on_curve = (lhs == rhs)
-    on_curve = True
-
+    
     return on_curve
 
 
@@ -114,16 +113,17 @@ def point_add(a, b, p, x0, y0, x1, y1):
     # ADD YOUR CODE BELOW
     xr, yr = None, None
 
+    assert isinstance(a, Bn)
+    assert isinstance(b, Bn)
+    assert isinstance(p, Bn) and p > 0
+
     if x0 == x1 and y0 == y1:
         raise Exception
     
-    # lam = ...
-    lam = (y0 - y1)
-    lam = lam.int_div(x0 - x1)
-    lam = lam.mod(p)
-
-    xr = (lam.pow(2) - x1 - x0).mod(p)
-    yr = (lam.int_mul(x1.int_sub(xr)) - y1).mod(p)
+    # lam = ..
+    lam = ((y1 - y0) * ((x1 - x0).pow(-1))) % p
+    xr = (lam.pow(2) - x0 - x1) % p
+    yr = (lam * (x0 - xr) - y0) % p
 
     return (xr, yr)
 

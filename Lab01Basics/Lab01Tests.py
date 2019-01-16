@@ -129,7 +129,7 @@ def test_on_curve():
 
     assert is_point_on_curve(a, b, p, None, None)
 
-@pytest.mark.task3
+#@pytest.mark.task3
 def test_Point_addition():
     """
     Test whether the EC point addition is correct.
