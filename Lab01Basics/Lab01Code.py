@@ -88,7 +88,7 @@ def is_point_on_curve(a, b, p, x, y):
            or (x == None and y == None)
 
     # Changed '==' to 'is'
-    if x == None and == None:
+    if x is None and y is None:
         return True
 
     lhs = (y * y) % p
@@ -117,15 +117,25 @@ def point_add(a, b, p, x0, y0, x1, y1):
     assert isinstance(b, Bn)
     assert isinstance(p, Bn) and p > 0
 
-    if x0 == x1 and y0 == y1:
-        raise Exception
-    
-    # lam = ..
-    lam = ((y1 - y0) * ((x1 - x0).pow(-1))) % p
-    xr = (lam.pow(2) - x0 - x1) % p
-    yr = (lam * (x0 - xr) - y0) % p
+    if (x0 is x1) and (y0 is y1):
+        raise Exception('EC Points must not be equal')
 
-    return (xr, yr)
+    if (x0 is x1) or not (is_point_on_curve(a, b, p, x0, y0) 
+            and is_point_on_curve(a, b, p, x1, y1)):
+        return (None, None)
+
+    if ((x0 is None) and (y0 is None)):
+        return (x1, y1)
+                  
+    if ((x1 is None) and (y1 is None)):
+        return (x0, y0)
+
+    # lam = ..
+    lam = ((y0 - y1) * (x0 - x1).mod_inverse(p)).mod(p)
+    xr = ((lam * lam) - x1 - x0).mod(p)
+    yr = (lam * (x1 - xr) - y1).mod(p)
+
+    return xr, yr
 
 def point_double(a, b, p, x, y):
     """Define "doubling" an EC point.
@@ -138,15 +148,17 @@ def point_double(a, b, p, x, y):
 
     Returns the point representing the double of the input (x, y).
     """  
-
     # ADD YOUR CODE BELOW
     xr, yr = None, None
 
-    lam = (3 * xp.pow(2) + a) * (2 * y).pow(-1).mod(p)
-    xr = lam.pow(2) - 2*x
-    yr = lam * (x - xr) - y.mod(p)
+    if ((x is None) and (y is None)):
+        return (None, None)
 
-    return xr, yr
+    lam = ((3 * x.pow(2) + a) * (2 * y).mod_inverse(p)).mod(p)
+    xr = (lam.pow(2) - (2 * x)).mod(p)
+    yr = (lam * (x - xr) - y).mod(p)
+
+    return (xr, yr)
 
 def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
     """
@@ -169,8 +181,8 @@ def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
         p1, p2 = P
         if scalar.is_bit_set(i):
             q1, q2 = Q
-            Q = (q1+p1, q2+p2)
-        P = (2 * p1, 2 * p2)
+            Q = point_add(a, b, p, q1, q2, p1, p2)
+        P = point_double(a, b, p, p1, p2)
         #pass ## ADD YOUR CODE HERE
 
     return Q
