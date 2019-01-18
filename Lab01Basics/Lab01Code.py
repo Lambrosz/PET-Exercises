@@ -209,8 +209,14 @@ def point_scalar_multiplication_montgomerry_ladder(a, b, p, x, y, scalar):
     R1 = (x, y)
 
     for i in reversed(range(0,scalar.num_bits())):
-
-        pass ## ADD YOUR CODE HERE
+        p1, p2 = R0
+        q1, q2 = R1
+        if not scalar.is_bit_set(i):
+            R1 = point_add(a, b, p, p1, p2, q1, q2)
+            R0 = point_double(a, b, p, p1, p2)
+        else:
+            R0 = point_add(a, b, p, p1, p2, q1, q2)
+            R1 = point_double(a, b, p, q1, q2)
 
     return R0
 
