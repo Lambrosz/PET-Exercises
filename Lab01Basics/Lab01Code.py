@@ -312,7 +312,10 @@ def dh_decrypt(priv, iv, ciphertext, tag, pub_A, aliceVer = None):
     shared_K = shared_K[:32]
 
     aes = Cipher("aes-256-gcm")
-    plaintext = aes.quick_gcm_dec(shared_K, iv, ciphertext, tag)
+    try:
+        plaintext = aes.quick_gcm_dec(shared_K, iv, ciphertext, tag)
+    except:
+        raise Exception("decryption failed")
 
     return plaintext.decode("utf8")
 
@@ -320,21 +323,70 @@ def dh_decrypt(priv, iv, ciphertext, tag, pub_A, aliceVer = None):
 #  ensure they run using the "py.test filename" command.
 #  What is your test coverage? Where is it missing cases?
 #  $ py.test-2.7 --cov-report html --cov Lab01Code Lab01Code.py 
+def test_get_key():
+    G, priv, pub = dh_get_key()
+    assert type(G) == type(EcGroup())
+    assert type(priv) == type(Bn())
+    assert pub == priv * G.generator()
 
 def test_encrypt():
     G, priv, pub = dh_get_key()
-    dh_encrypt(pub, "testing")
-    assert False
+    iv, ciphertext, tag, pub_a = dh_encrypt(pub, "encryptme")
+    assert len(iv) == 32
+    assert len(ciphertext) == len("encryptme")
+
 
 def test_decrypt():
-    G, priv, pub = dh_get_key()
+    # Test that decryption correctly retrieves original message
+    G, priv_a, pub_a = dh_get_key()
     message = "let slip the dogs of war"
-    iv, ciphertext, tag, pub_A = dh_encrypt(pub, message)
-    dec = dh_decrypt(priv, iv, ciphertext, tag, pub_A)
-    assert dec == message 
+    # Encrypt a message using the above public key
+    iv, ciphertext, tag, pub_b = dh_encrypt(pub_a, message)
+    # Decrypt using our private key
+    dec = dh_decrypt(priv_a, iv, ciphertext, tag, pub_b)
+    assert dec == message
 
 def test_fails():
-    assert False
+    # Add cases when the above functions should fail
+    G, priv_a, pub_a = dh_get_key()
+    message = "some tests are more equal than others"
+
+    # Encrypt with Alice's public key, for later tests
+    iv, ciphertext, tag, pub_b = dh_encrypt(pub_a, message)
+
+    # Test that decryption fails with wrong ciphertext
+    ciphertext_wrong = urandom(len(ciphertext))
+    try:
+        dh_decrypt(priv_a, iv, ciphertext_wrong, tag, pub_b)
+    except Exception, e:
+        assert 'decryption failed' in str(e) 
+
+    # Test that decryption fails with wrong iv 
+    iv_wrong = urandom(32)
+    try:
+        dh_decrypt(priv_a, iv_wrong, ciphertext, tag, pub_b)
+    except Exception, e:
+        assert 'decryption failed' in str(e) 
+
+    # Test that decryption fails with wrong tag 
+    tag_wrong = urandom(len(tag))
+    try:
+        dh_decrypt(priv_a, iv, ciphertext, tag_wrong, pub_b)
+    except Exception, e:
+        assert 'decryption failed' in str(e) 
+
+    # Test that decryption fails with wrong public key
+    _, priv_wrong, pub_wrong = dh_get_key()
+    try:
+        dh_decrypt(priv_a, iv, ciphertext, tag, pub_wrong)
+    except Exception, e:
+        assert 'decryption failed' in str(e) 
+
+    # Test that decryption fails with wrong private key
+    try:
+        dh_decrypt(priv_wrong, iv, ciphertext, tag, pub_b)
+    except Exception, e:
+        assert 'decryption failed' in str(e) 
 
 #####################################################
 # TASK 6 -- Time EC scalar multiplication
@@ -348,3 +400,7 @@ def test_fails():
 
 def time_scalar_mul():
     pass
+
+def test_time_scalar_mul():
+    time_scalar_mul()
+    assert True
