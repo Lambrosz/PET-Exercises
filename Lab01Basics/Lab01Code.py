@@ -245,16 +245,17 @@ def ecdsa_key_gen():
 def ecdsa_sign(G, priv_sign, message):
     """ Sign the SHA256 digest of the message using ECDSA and return a signature """
     plaintext =  message.encode("utf8")
-
-    ## YOUR CODE HERE
+    digest = sha256(plaintext).digest()
+    sig = do_ecdsa_sign(G, priv_sign, digest)
 
     return sig
 
 def ecdsa_verify(G, pub_verify, message, sig):
     """ Verify the ECDSA signature on the message """
     plaintext =  message.encode("utf8")
+    digest = sha256(plaintext).digest()
 
-    ## YOUR CODE HERE
+    res = do_ecdsa_verify(G, pub_verify, sig, digest)
 
     return res
 
@@ -273,6 +274,7 @@ def dh_get_key():
     pub_enc = priv_dec * G.generator()
     return (G, priv_dec, pub_enc)
 
+from binascii import unhexlify
 
 def dh_encrypt(pub, message, aliceSig = None):
     """ Assume you know the public key of someone else (Bob), 
@@ -282,17 +284,37 @@ def dh_encrypt(pub, message, aliceSig = None):
         - Use the shared key to AES_GCM encrypt the message.
         - Optionally: sign the message with Alice's key.
     """
-    
-    ## YOUR CODE HERE
-    pass
+    # priv is class Bn, pub is class EcPt
+    G, new_priv, new_pub = dh_get_key()
 
-def dh_decrypt(priv, ciphertext, aliceVer = None):
+    # Get the x coordinate of the point multiplication, which is
+    # the shared key
+    shared_K, _ = pub.pt_mul(new_priv).get_affine()
+    shared_K = sha256(shared_K.repr()).hexdigest()
+    shared_K = shared_K[:32]
+
+    plaintext = message.encode("utf8")
+    aes = Cipher("aes-256-gcm")
+    iv = urandom(32)
+
+    ciphertext, tag = aes.quick_gcm_enc(shared_K, iv, plaintext)
+
+    return iv, ciphertext, tag, new_pub
+
+def dh_decrypt(priv, iv, ciphertext, tag, pub_A, aliceVer = None):
     """ Decrypt a received message encrypted using your public key, 
     of which the private key is provided. Optionally verify 
     the message came from Alice using her verification key."""
-    
-    ## YOUR CODE HERE
-    pass
+
+    # Calculate 
+    shared_K, _ = pub_A.pt_mul(priv).get_affine()
+    shared_K = sha256(shared_K.repr()).hexdigest()
+    shared_K = shared_K[:32]
+
+    aes = Cipher("aes-256-gcm")
+    plaintext = aes.quick_gcm_dec(shared_K, iv, ciphertext, tag)
+
+    return plaintext.decode("utf8")
 
 ## NOTE: populate those (or more) tests
 #  ensure they run using the "py.test filename" command.
@@ -300,10 +322,16 @@ def dh_decrypt(priv, ciphertext, aliceVer = None):
 #  $ py.test-2.7 --cov-report html --cov Lab01Code Lab01Code.py 
 
 def test_encrypt():
+    G, priv, pub = dh_get_key()
+    dh_encrypt(pub, "testing")
     assert False
 
 def test_decrypt():
-    assert False
+    G, priv, pub = dh_get_key()
+    message = "let slip the dogs of war"
+    iv, ciphertext, tag, pub_A = dh_encrypt(pub, message)
+    dec = dh_decrypt(priv, iv, ciphertext, tag, pub_A)
+    assert dec == message 
 
 def test_fails():
     assert False
