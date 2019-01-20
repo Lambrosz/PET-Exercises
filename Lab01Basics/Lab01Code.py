@@ -8,7 +8,8 @@
 # $ py.test-2.7 -v Lab01Tests.py 
 
 ###########################
-# Group Members: TODO
+# Group Members: 
+# Lab partner: MANYA PUMA, Jorge Luis
 ###########################
 
 
@@ -34,10 +35,8 @@ def encrypt_message(K, message):
     """ Encrypt a message under a key K """
 
     plaintext = message.encode("utf8")
-    ## YOUR CODE HERE
     aes = Cipher("aes-128-gcm")
     iv = urandom(16)
-    #key = urandom(16)
     ciphertext, tag = aes.quick_gcm_enc(K, iv, plaintext)
     return (iv, ciphertext, tag)
 
@@ -46,7 +45,6 @@ def decrypt_message(K, iv, ciphertext, tag):
 
         In case the decryption fails, throw an exception.
     """
-    ## YOUR CODE HERE
     plain = ''
     aes = Cipher("aes-128-gcm")
     try:    
@@ -81,6 +79,7 @@ def is_point_on_curve(a, b, p, x, y):
     Return True if point (x,y) is on curve, otherwise False.
     By convention a (None, None) point represents "infinity".
     """
+    # Make sure that all parameters are of the correct type
     assert isinstance(a, Bn)
     assert isinstance(b, Bn)
     assert isinstance(p, Bn) and p > 0
@@ -110,15 +109,14 @@ def point_add(a, b, p, x0, y0, x1, y1):
     Return the point resulting from the addition. Raises an Exception if the points are equal.
     """
 
-    # ADD YOUR CODE BELOW
     xr, yr = None, None
-
+    # Ensure that parameters are of correct type
     assert isinstance(a, Bn)
     assert isinstance(b, Bn)
     assert isinstance(p, Bn) and p > 0
 
     if (x0 is x1) and (y0 is y1):
-        raise Exception('EC Points must not be equal')
+        raise Exception('EC Points must not be equal') # Exact text needs to be present
 
     if (x0 is x1) or not (is_point_on_curve(a, b, p, x0, y0) 
             and is_point_on_curve(a, b, p, x1, y1)):
@@ -148,7 +146,6 @@ def point_double(a, b, p, x, y):
 
     Returns the point representing the double of the input (x, y).
     """  
-    # ADD YOUR CODE BELOW
     xr, yr = None, None
 
     if ((x is None) and (y is None)):
@@ -183,7 +180,6 @@ def point_scalar_multiplication_double_and_add(a, b, p, x, y, scalar):
             q1, q2 = Q
             Q = point_add(a, b, p, q1, q2, p1, p2)
         P = point_double(a, b, p, p1, p2)
-        #pass ## ADD YOUR CODE HERE
 
     return Q
 
