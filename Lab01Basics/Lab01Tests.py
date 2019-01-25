@@ -129,7 +129,7 @@ def test_on_curve():
 
     assert is_point_on_curve(a, b, p, None, None)
 
-#@pytest.mark.task3
+@pytest.mark.task3
 def test_Point_addition():
     """
     Test whether the EC point addition is correct.
@@ -179,7 +179,7 @@ def test_Point_addition():
         point_add(a, b, p, gx0, gy0, gx0, gy0)
     assert 'EC Points must not be equal' in str(excinfo.value)
 
-#@pytest.mark.task3
+@pytest.mark.task3
 def test_Point_addition_check_inf_result():
     """
     Test whether the EC point addition is correct for pt - pt = inf
@@ -203,7 +203,7 @@ def test_Point_addition_check_inf_result():
 
 
 
-#@pytest.mark.task3
+@pytest.mark.task3
 def test_Point_doubling():
     """
     Test whether the EC point doubling is correct.
@@ -228,7 +228,7 @@ def test_Point_doubling():
     assert is_point_on_curve(a, b, p, x2, y2)
     assert x2 == None and y2 == None
 
-#@pytest.mark.task3
+@pytest.mark.task3
 def test_Point_scalar_mult_double_and_add():
     """
     Test the scalar multiplication using double and add.
@@ -251,7 +251,7 @@ def test_Point_scalar_mult_double_and_add():
     assert gx2 == x2
     assert gy2 == y2
 
-#@pytest.mark.task3
+@pytest.mark.task3
 def test_Point_scalar_mult_montgomerry_ladder():
     """
     Test the scalar multiplication using double and add.
