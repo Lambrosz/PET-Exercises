@@ -88,7 +88,7 @@ def is_point_on_curve(a, b, p, x, y):
            or (x == None and y == None)
 
     # Changed '==' to 'is'
-    if x == None and == None:
+    if x is None and is None:
         return True
 
     lhs = (y * y) % p
