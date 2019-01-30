@@ -223,6 +223,7 @@ def mix_server_n_hop(private_key, message_list, final=False):
 
         expected_mac = h.digest()
 
+        print('Server: ', expected_mac[:20])
         if not secure_compare(msg.hmacs[0], expected_mac[:20]):
             raise Exception("HMAC check failure")
 
@@ -258,14 +259,12 @@ def mix_server_n_hop(private_key, message_list, final=False):
 
     return out_queue
 
-
 def mix_client_n_hop(public_keys, address, message):
     """
     Encode a message to travel through a sequence of mixes with a sequence public keys. 
     The maximum size of the final address and the message are 256 bytes and 1000 bytes respectively.
     Returns an 'NHopMixMessage' with four parts: a public key, a list of hmacs (20 bytes each),
     an address ciphertext (256 + 2 bytes) and a message ciphertext (1002 bytes). 
-
     """
     G = EcGroup()
     # assert G.check_point(public_key)
@@ -274,6 +273,7 @@ def mix_client_n_hop(public_keys, address, message):
 
     # Encode the address and message
     # use those encoded values as the payload you encrypt!
+    # ! = Network byte order, H = unsigned short, 256s = string 256 chars long
     address_plaintext = pack("!H256s", len(address), address)
     message_plaintext = pack("!H1000s", len(message), message)
 
@@ -282,10 +282,74 @@ def mix_client_n_hop(public_keys, address, message):
     client_public_key  = private_key * G.generator()
 
     ## ADD CODE HERE
+    
+    key_materials = []
+    private_keys = [private_key]
+    
+    ## Loop over mixes public keys to generate key material for each one. 
+    for i, public_key in enumerate(public_keys):
+        
+        ## First get a shared key for each mix
+        shared_element = private_keys[i] * public_key
+        key_material = sha512(shared_element.export()).digest()
+        
+        key_materials.append(key_material)
+        
+        ## Extract a blinding factor for this key material
+        blinding_factor = Bn.from_binary(key_material[48:])
+        
+        ## Generate the private key with the blinding factor for the next mix
+        new_ec_private_key = blinding_factor * private_keys[i]
+        
+        ## Add this key to the tuple of all privates keys
+        private_keys.append(new_ec_private_key)
+        
+    ## Initialization
+    address_cipher = address_plaintext
+    message_cipher = message_plaintext
+  
+    hmacs = []
+    
+    ## Loop over the different key material, reverse order
+    ## in order to start with the last mix and go back to the first one.
+    for i, key_material in reversed(list(enumerate(key_materials))):
 
+        # Use different parts of the shared key for different operations
+        hmac_key = key_material[:16]       
+        address_key = key_material[16:32]       
+        message_key = key_material[32:48]
+        
+        ## Encrypt the address and the message
+        iv = b"\x00"*16
+
+        address_cipher = aes_ctr_enc_dec(address_key, iv, address_cipher)
+        message_cipher = aes_ctr_enc_dec(message_key, iv, message_cipher)
+        
+        
+        ## Create HMAC
+        h = Hmac(b"sha512", hmac_key)
+        ## Encrypt other mac for the mixes after the current one
+        for j, other_mac in enumerate(hmacs[:len(key_materials)-i-1]):
+            ## iv different for each mac
+            iv = pack("H14s", j, b"\x00"*14)
+            
+            ## Encrypt
+            hmac_cipher = aes_ctr_enc_dec(hmac_key, iv, other_mac)
+            ## Add this cipher to the HMAC for the current mix
+            h.update(hmac_cipher)
+            ## Replace the HMAC for the mixes after the current one by their cipher
+            hmacs.pop(j)
+            hmacs.insert(j,hmac_cipher)       
+            
+        ## Add the address and message cipher to the HMAC
+        h.update(address_cipher)
+        h.update(message_cipher)
+        
+        ## Insert the HMAC add the beginning of the tuple
+        expected_mac = h.digest()[:20]
+        hmacs.insert(0,expected_mac)
+    print('Client: ', hmacs)
     return NHopMixMessage(client_public_key, hmacs, address_cipher, message_cipher)
-
-
 
 #####################################################
 # TASK 4 -- Statistical Disclosure Attack
@@ -325,15 +389,24 @@ def generate_trace(number_of_users, threshold_size, number_of_rounds, targets_fr
 from collections import Counter
 
 def analyze_trace(trace, target_number_of_friends, target=0):
-    """ 
+    """ :
     Given a trace of traffic, and a given number of friends, 
     return the list of receiver identifiers that are the most likely 
     friends of the target.
     """
 
     ## ADD CODE HERE
+    all_suspects = []
+    for senders, receivers in trace:
+        if target in senders:
+            all_suspects += receivers
 
-    return []
+    suspects = Counter(all_suspects)
+    suspects = suspects.most_common(target_number_of_friends)
+    print (suspects)
+    suspects = [x for x, _ in suspects] 
+    print (suspects)
+    return suspects 
 
 ## TASK Q1 (Question 1): The mix packet format you worked on uses AES-CTR with an IV set to all zeros. 
 #                        Explain whether this is a security concern and justify your answer.
