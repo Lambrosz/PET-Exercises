@@ -282,26 +282,23 @@ def mix_client_n_hop(public_keys, address, message):
     client_public_key  = private_key * G.generator()
 
     ## ADD CODE HERE
-    
     key_materials = []
     private_keys = [private_key]
     
-    ## Loop over mixes public keys to generate key material for each one. 
-    for i, public_key in enumerate(public_keys):
+    ## Create the shared elements and key materials for each of the hops,
+    ## by iterating through the list of public keys provided
+    for i, hop_public_key in enumerate(public_keys):
         
         ## First get a shared key for each mix
-        shared_element = private_keys[i] * public_key
+        shared_element = private_keys[i] * hop_public_key
         key_material = sha512(shared_element.export()).digest()
-        
         key_materials.append(key_material)
         
         ## Extract a blinding factor for this key material
         blinding_factor = Bn.from_binary(key_material[48:])
         
-        ## Generate the private key with the blinding factor for the next mix
+        ## Get a new private key using the blinding factor for the next mix
         new_ec_private_key = blinding_factor * private_keys[i]
-        
-        ## Add this key to the tuple of all privates keys
         private_keys.append(new_ec_private_key)
         
     ## Initialization
@@ -310,44 +307,44 @@ def mix_client_n_hop(public_keys, address, message):
   
     hmacs = []
     
-    ## Loop over the different key material, reverse order
-    ## in order to start with the last mix and go back to the first one.
+    ## This iteration needs to happen in reverse, as we need to "encapsulate"
+    ## the information for the last hop in the info for the second to last etc.
+    counter = 0
     for i, key_material in reversed(list(enumerate(key_materials))):
 
-        # Use different parts of the shared key for different operations
-        hmac_key = key_material[:16]       
-        address_key = key_material[16:32]       
+        ## Use different parts of the shared key for different operations
+        hmac_key = key_material[:16]  
+        address_key = key_material[16:32]
         message_key = key_material[32:48]
         
         ## Encrypt the address and the message
         iv = b"\x00"*16
-
         address_cipher = aes_ctr_enc_dec(address_key, iv, address_cipher)
         message_cipher = aes_ctr_enc_dec(message_key, iv, message_cipher)
         
-        
         ## Create HMAC
         h = Hmac(b"sha512", hmac_key)
+        print(len(key_materials)-i-1)
         ## Encrypt other mac for the mixes after the current one
-        for j, other_mac in enumerate(hmacs[:len(key_materials)-i-1]):
+        for j, other_mac in enumerate(hmacs[:counter]):
             ## iv different for each mac
             iv = pack("H14s", j, b"\x00"*14)
-            
-            ## Encrypt
             hmac_cipher = aes_ctr_enc_dec(hmac_key, iv, other_mac)
             ## Add this cipher to the HMAC for the current mix
             h.update(hmac_cipher)
             ## Replace the HMAC for the mixes after the current one by their cipher
             hmacs.pop(j)
-            hmacs.insert(j,hmac_cipher)       
+            hmacs.insert(j, hmac_cipher)       
             
         ## Add the address and message cipher to the HMAC
         h.update(address_cipher)
         h.update(message_cipher)
         
-        ## Insert the HMAC add the beginning of the tuple
+        ## Insert the HMAC at the list top
         expected_mac = h.digest()[:20]
-        hmacs.insert(0,expected_mac)
+        hmacs.insert(0, expected_mac)
+        counter += 1
+
     print('Client: ', hmacs)
     return NHopMixMessage(client_public_key, hmacs, address_cipher, message_cipher)
 
@@ -397,26 +394,45 @@ def analyze_trace(trace, target_number_of_friends, target=0):
 
     ## ADD CODE HERE
     all_suspects = []
+    ## Create a list of all receivers who appear at times when our target is
+    ## sending a message
     for senders, receivers in trace:
         if target in senders:
             all_suspects += receivers
 
+    ## Extract the receivers who appear most often at times when our
+    ## target is sending
     suspects = Counter(all_suspects)
     suspects = suspects.most_common(target_number_of_friends)
-    print (suspects)
     suspects = [x for x, _ in suspects] 
-    print (suspects)
     return suspects 
 
 ## TASK Q1 (Question 1): The mix packet format you worked on uses AES-CTR with an IV set to all zeros. 
 #                        Explain whether this is a security concern and justify your answer.
 
-""" TODO: Your answer HERE """
+"""
+In this case, this is not a security concern since a new private key is
+used for each hop in the mix. In a sense, the purpose of having an IV in
+the first place is served by this use of a unique private key.
 
+"""
 
 ## TASK Q2 (Question 2): What assumptions does your implementation of the Statistical Disclosure Attack 
 #                        makes about the distribution of traffic from non-target senders to receivers? Is
 #                        the correctness of the result returned dependent on this background distribution?
 
-""" TODO: Your answer HERE """
+""" 
+It is mainly making the assumption that the distribution of traffic from
+non-target senders is even, such that it doesn't interfere with the detection
+of anomalously high traffic between our target and the suspects.
+
+For example: 
+
+If sender A (not our target sender), is sending messages to receiver B
+continuously (i.e. at each observed round), then receiver B will appear in
+all of the receiver lists we observe when looking for suspects for our target.
+Therefore it would appear that our target was communicating with receiver B, 
+when that might not be the case.
+
+"""
 
