@@ -31,7 +31,11 @@ def keyGen(params):
    """ Generate a private / public key pair """
    (G, g, h, o) = params
    
-   # ADD CODE HERE
+   ## Generate private/public keys
+   priv = o.random()
+   assert(priv < o)
+   assert(priv >= 1)
+   pub = priv * g
 
    return (priv, pub)
 
@@ -39,8 +43,12 @@ def encrypt(params, pub, m):
     """ Encrypt a message under the public key """
     if not -100 < m < 100:
         raise Exception("Message value to low or high.")
+    # ADD CODE HERE
+    
+    (G, g, h, o) = params
+    k = o.random()
 
-   # ADD CODE HERE
+    c = (g*k, (k*pub) + (m*h))
 
     return c
 
