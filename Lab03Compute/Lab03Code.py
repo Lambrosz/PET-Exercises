@@ -18,6 +18,8 @@
 
 
 from petlib.ec import EcGroup
+from petlib.ec import EcPt
+from petlib.bn import Bn
 
 def setup():
     """Generates the Cryptosystem Parameters."""
@@ -48,7 +50,26 @@ def encrypt(params, pub, m):
     (G, g, h, o) = params
     k = o.random()
 
-    c = (g*k, (k*pub) + (m*h))
+    ## Get the x coordinate of EcPts g, h and pub,
+    ## and convert to Bn to use in calculations
+    '''
+    g, _ = g.get_affine()
+    g = Bn.from_decimal(str(g))
+
+    h, _ = h.get_affine()
+    h = Bn.from_decimal(str(h))
+
+    pub, _ = pub.get_affine()
+    pub = Bn.from_decimal(str(pub))
+
+    c = g.mod_pow(k, o), pub.mod_pow(k, o) * (h.mod_pow(m, o))
+    '''
+    a0 = g.pt_mul(k)
+    pkk = pub.pt_mul(k)
+    hm = h.pt_mul(m)
+    b0 = pkk.pt_add(hm)
+
+    c = a0, b0
 
     return c
 
@@ -81,10 +102,12 @@ def logh(params, hm):
 def decrypt(params, priv, ciphertext):
     """ Decrypt a message using the private key """
     assert isCiphertext(params, ciphertext)
-    a , b = ciphertext
+    a, b = ciphertext
+    # ADD CODE HERE
 
-   # ADD CODE HERE
-
+    (G, g, h, o) = params
+    #hm = EcPt(b.divmod(a.mod_pow(priv, o), o))
+    hm = b + (-(a.pt_mul(priv)))
     return logh(params, hm)
 
 #####################################################
@@ -98,17 +121,28 @@ def add(params, pub, c1, c2):
     """
     assert isCiphertext(params, c1)
     assert isCiphertext(params, c2)
+    
+    # ADD CODE HERE
+    a1, b1 = c1
+    a2, b2 = c2
 
-   # ADD CODE HERE
-
+    c3 = a1 + a2, b1 + b2
     return c3
 
 def mul(params, pub, c1, alpha):
     """ Given a ciphertext compute the ciphertext of the 
         product of the plaintext time alpha """
     assert isCiphertext(params, c1)
+    # ADD CODE HERE
+    (G, g, h, o) = params
+    a1, b1 = c1
+    a2 = EcPt(G)
+    b2 = EcPt(G)
+    for i in range(0, alpha):
+        a2 += a1
+        b2 += b1
 
-   # ADD CODE HERE
+    c3 = a2, b2
 
     return c3
 
