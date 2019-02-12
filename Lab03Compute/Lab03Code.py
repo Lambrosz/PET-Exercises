@@ -50,20 +50,6 @@ def encrypt(params, pub, m):
     (G, g, h, o) = params
     k = o.random()
 
-    ## Get the x coordinate of EcPts g, h and pub,
-    ## and convert to Bn to use in calculations
-    '''
-    g, _ = g.get_affine()
-    g = Bn.from_decimal(str(g))
-
-    h, _ = h.get_affine()
-    h = Bn.from_decimal(str(h))
-
-    pub, _ = pub.get_affine()
-    pub = Bn.from_decimal(str(pub))
-
-    c = g.mod_pow(k, o), pub.mod_pow(k, o) * (h.mod_pow(m, o))
-    '''
     a0 = g.pt_mul(k)
     pkk = pub.pt_mul(k)
     hm = h.pt_mul(m)
@@ -106,7 +92,6 @@ def decrypt(params, priv, ciphertext):
     # ADD CODE HERE
 
     (G, g, h, o) = params
-    #hm = EcPt(b.divmod(a.mod_pow(priv, o), o))
     hm = b + (-(a.pt_mul(priv)))
     return logh(params, hm)
 
