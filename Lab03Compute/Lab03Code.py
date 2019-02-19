@@ -81,6 +81,7 @@ def logh(params, hm):
             _logh[(m * h)] = m
 
     if hm not in _logh:
+        print(hm)
         raise Exception("No decryption found.")
 
     return _logh[hm]
@@ -139,8 +140,10 @@ def mul(params, pub, c1, alpha):
 def groupKey(params, pubKeys=[]):
     """ Generate a group public key from a list of public keys """
     (G, g, h, o) = params
-
-   # ADD CODE HERE
+    # ADD CODE HERE
+    pub = G.infinite()
+    for pk in pubKeys:
+        pub = pub.pt_add(pk)
 
     return pub
 
@@ -150,7 +153,9 @@ def partialDecrypt(params, priv, ciphertext, final=False):
     assert isCiphertext(params, ciphertext)
     
     # ADD CODE HERE
-
+    (G, g, h, o) = params
+    a1, b1 = ciphertext
+    b1 = b1 + (-(priv * a1))
     if final:
         return logh(params, b1)
     else:
