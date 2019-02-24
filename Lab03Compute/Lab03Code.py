@@ -33,10 +33,11 @@ def keyGen(params):
    """ Generate a private / public key pair """
    (G, g, h, o) = params
    
-   ## Generate private/public keys
+   # Generate private/public keys
    priv = o.random()
    assert(priv < o)
    assert(priv >= 1)
+   # g^x 
    pub = priv * g
 
    return (priv, pub)
@@ -46,11 +47,14 @@ def encrypt(params, pub, m):
     if not -100 < m < 100:
         raise Exception("Message value to low or high.")
     # ADD CODE HERE
-    
     (G, g, h, o) = params
+    # Random k so that no two plaintexts produce the same ciphertext
     k = o.random().mod(o)
 
+    # g^k
     a0 = g.pt_mul(k)
+
+    # (pub^k)*(h^m) 
     pkk = pub.pt_mul(k)
     hm = h.pt_mul(m)
     b0 = pkk.pt_add(hm)
@@ -91,8 +95,9 @@ def decrypt(params, priv, ciphertext):
     assert isCiphertext(params, ciphertext)
     a, b = ciphertext
     # ADD CODE HERE
-
     (G, g, h, o) = params
+
+    # hm = b/(a^x) = ((g^(xk))*(h^m))/(g^(xk))
     hm = b + (-(a.pt_mul(priv)))
     return logh(params, hm)
 
@@ -112,6 +117,7 @@ def add(params, pub, c1, c2):
     a1, b1 = c1
     a2, b2 = c2
 
+    # Add the parts of the ciphertext tuples
     c3 = a1 + a2, b1 + b2
     return c3
 
@@ -122,15 +128,17 @@ def mul(params, pub, c1, alpha):
     # ADD CODE HERE
     (G, g, h, o) = params
     a1, b1 = c1
-    a2 = EcPt(G)
-    b2 = EcPt(G)
-    for i in range(0, alpha):
+    a2 = a1
+    b2 = b1
+    # Add the ciphertext to itself alpha number of times (alpha-1 since
+    # we don't start from 0)
+    for i in range(0, alpha-1):
         a2 += a1
         b2 += b1
 
-    c3 = a2, b2
+    c2 = a2, b2
 
-    return c3
+    return c2
 
 #####################################################
 # TASK 3 -- Define Group key derivation & Threshold
@@ -267,7 +275,18 @@ def simulate_poll(votes):
 # What is the advantage of the adversary in guessing b given your implementation of 
 # Homomorphic addition? What are the security implications of this?
 
-""" Your Answer here """
+""" Your Answer here 
+
+Given this implementation of Homomorphic addition, the result of adding two ciphertexts
+will always be the same. Therefore the adversary can add Pa plus Pb and Pb plus Pc,
+and hence figure out which action (i.e. 'b') H2 perfomed. If the adversary can perform C-Cb,
+then the result of this can be compared with Ca and Cc, and therefore again b can be figured out.
+
+One security implication is that an adversary could reverse-engineer the function
+performed by H2, given that the function is simple enough. There is no implication, however,
+in terms of figuring out the actual values of the plaintexts.
+
+"""
 
 ###########################################################
 # TASK Q2 -- Answer questions regarding your implementation
@@ -280,9 +299,19 @@ def simulate_poll(votes):
 
 """ Your Answer here 
 
-(a)  
+(a) They could modify the function such that it encodes '0' for each possible vote, therefore
+yielding no result in the count, since the total for all choices would be 0.
 
-(b) They could change encode_vote so that it returns 
+(b) The adversary could encode votes of their choosing, randomly picking votes
+based on a probability which reflects their desired result. For example if they
+wanted a result which was 90:10 in favor of option "A", they could encode a 1
+for option A 90% of the time.
+
+If the attacker modifies the function so that it returns 0 votes for all options,
+this can potentially be detected since it would be easy to see that no votes
+were counted towards any choice. The manipulation in (b) however could not be
+detected in the current implementation, since there is no verification test in 
+place.
 
 """
 
