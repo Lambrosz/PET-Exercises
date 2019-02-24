@@ -48,7 +48,7 @@ def encrypt(params, pub, m):
     # ADD CODE HERE
     
     (G, g, h, o) = params
-    k = o.random()
+    k = o.random().mod(o)
 
     a0 = g.pt_mul(k)
     pkk = pub.pt_mul(k)
@@ -174,9 +174,15 @@ def corruptPubKey(params, priv, OtherPubKeys=[]):
         corrupt authority. """
     (G, g, h, o) = params
     
-   # ADD CODE HERE
+    # ADD CODE HERE
+    real_pub = priv * g
+    pub_product = G.infinite()
+    for p in OtherPubKeys:
+        pub_product = pub_product.pt_add(p) 
+    
+    evil_pub = real_pub + (-pub_product)
 
-    return pub
+    return evil_pub
 
 #####################################################
 # TASK 5 -- Implement operations to support a simple
@@ -188,8 +194,14 @@ def encode_vote(params, pub, vote):
         ciphertexts representing the count of votes for
         zero and the votes for one."""
     assert vote in [0, 1]
-
-   # ADD CODE HERE
+    
+    # ADD CODE HERE
+    if vote == 0:
+        v0 = encrypt(params, pub, 1)
+        v1 = encrypt(params, pub, 0)
+    else:
+        v0 = encrypt(params, pub, 0)
+        v1 = encrypt(params, pub, 1)
 
     return (v0, v1)
 
@@ -198,7 +210,13 @@ def process_votes(params, pub, encrypted_votes):
         to sum votes for zeros and votes for ones. """
     assert isinstance(encrypted_votes, list)
     
-   # ADD CODE HERE
+    # ADD CODE HERE
+    tv0, tv1 = encrypted_votes[0]
+
+    for vote in encrypted_votes[1:]:
+        v0, v1 = vote
+        tv0 = add(params, pub, tv0, v0)
+        tv1 = add(params, pub, tv1, v1)
 
     return tv0, tv1
 
@@ -260,4 +278,11 @@ def simulate_poll(votes):
 # that it yields an arbitrary result. Can those malicious actions 
 # be detected given your implementation?
 
-""" Your Answer here """
+""" Your Answer here 
+
+(a)  
+
+(b) They could change encode_vote so that it returns 
+
+"""
+
