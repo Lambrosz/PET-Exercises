@@ -52,7 +52,13 @@ def proveKey(params, priv, pub):
     (G, g, hs, o) = params
     
     ## YOUR CODE HERE:
-    
+
+    # Generate random witness
+    w = o.random()
+    W = g.pt_mul(w)
+    # Generate challenge based on g and W
+    c = to_challenge([g, W])
+    r = (w - (c * priv)) % o
     return (c, r)
 
 def verifyKey(params, pub, proof):
@@ -90,9 +96,15 @@ def proveCommitment(params, C, r, secrets):
     """
     (G, g, (h0, h1, h2, h3), o) = params
     x0, x1, x2, x3 = secrets
-
+    
     ## YOUR CODE HERE:
-
+    # Generate 5 random 'w' values
+    ws = [o.random() for _ in range(5)]
+    W = (ws[0] * h0) + (ws[1] * h1) + (ws[2] * h2) \
+            + (ws[3] * h3) + (ws[4] * g) 
+    c = to_challenge([g, h0, h1, h2, h3, W])
+    secrets.append(r)
+    responses = [w - c*x for w,x in zip(ws, secrets)]
     return (c, responses)
 
 def verifyCommitments(params, C, proof):
