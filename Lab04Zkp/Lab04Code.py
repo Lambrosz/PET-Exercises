@@ -151,8 +151,8 @@ def verifyDLEquality(params, K, L, proof):
     c, r = proof
 
     ## YOUR CODE HERE:
-
-    return # YOUR RETURN HERE
+    tmp = to_challenge([g, h0, r * g + c * K, r * h0 + c * L])
+    return tmp == c
 
 #####################################################
 # TASK 4 -- Prove correct encryption and knowledge of 
@@ -186,7 +186,6 @@ def verifyEnc(params, pub, Ciphertext, proof):
     (c, (rk, rm)) = proof
 
     ## YOUR CODE HERE:
-
     return ## YOUR RETURN HERE
 
 
