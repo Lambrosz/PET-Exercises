@@ -176,6 +176,17 @@ def proveEnc(params, pub, Ciphertext, k, m):
     a, b = Ciphertext
 
     ## YOUR CODE HERE:
+    # Generate random w values
+    w1 = o.random()
+    w2 = o.random()
+    # 
+    W1 = w1 * g
+    W2 = (w2 * h0) + (w1 * pub)
+    # Compute the challenge
+    c = to_challenge([g, h0, pub, a, b, W1, W2])
+    # Compute responses
+    rk = (w1 - (c*k)) % o
+    rm = (w2 - (c*m)) % o
 
     return (c, (rk, rm))
 
@@ -186,7 +197,14 @@ def verifyEnc(params, pub, Ciphertext, proof):
     (c, (rk, rm)) = proof
 
     ## YOUR CODE HERE:
-    return ## YOUR RETURN HERE
+    W1 = (rk * g) + (c * a)
+    W2 = (rm * h0) + (rk * pub) + (c * b)
+
+    # Compute new challenge to compare with actual challenge
+    c_tmp = to_challenge([g, h0, pub, a, b, W1, W2])
+
+    # Return the result of the comparison
+    return c_tmp == c
 
 
 #####################################################
@@ -210,16 +228,30 @@ def prove_x0eq10x1plus20(params, C, x0, x1, r):
     (G, g, (h0, h1, h2, h3), o) = params
 
     ## YOUR CODE HERE:
+    # Prove that x0 = 10 * x1 + 20
+    w1 = o.random()
+    w2 = o.random()
 
-    return ## YOUR RETURN HERE
+    W = w1 * g + w2 * h1 + w2 * (10 * h0)
+    c = to_challenge([g, h0, h1, W])
+
+    r1 = (w1 - (c * r)) % o
+    r2 = (w2 - (c * x1)) % o
+
+    return (c, (r1, r2))
 
 def verify_x0eq10x1plus20(params, C, proof):
     """ Verify that proof of knowledge of C and x0 = 10 x1 + 20. """
     (G, g, (h0, h1, h2, h3), o) = params
 
     ## YOUR CODE HERE:
+    c, (r1, r2) = proof
 
-    return ## YOUR RETURN HERE
+    W = (r1 * g) + (r2 * h1) + (r2 * (10 * h0)) + (c * (C - 20 * h0))
+    challenge = to_challenge([g, h0, h1, W])
+
+    # Return the result of the comparison, i.e. the verification
+    return challenge == c
 
 #####################################################
 # TASK 6 -- (OPTIONAL) Prove that a ciphertext is either 0 or 1
@@ -264,7 +296,27 @@ def test_bin_incorrect():
 # that  deviates from the Schnorr identification protocol? Justify 
 # your answer by describing what a dishonest verifier may do.
 
-""" TODO: Your answer here. """
+""" TODO: Your answer here.
+
+No, plausible deniability does not hold against a dishonest verifier.
+
+A dishonest verifier could send a challenge c which is the Hash
+of the prover's public key (known), W (which is received as the
+first step of the Schorr protocol from the prover) and a chosen
+message m, i.e.:
+
+c = H(pub, W, m)
+
+The prover will then return r = w - cx.
+
+Using this information, the dishonest verifier can convince a
+third party that the message m has been signed by the prover
+in a Schorr signature scheme protocol transaction, by showing
+that:
+
+H(pub, g*r + pub*c, m) == c
+
+"""
 
 #####################################################
 # TASK Q2 - Answer the following question:
