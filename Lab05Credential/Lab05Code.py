@@ -190,12 +190,8 @@ def credential_Issuing(params, pub, ciphertext, issuer_params):
     ## TODO proof
 
     # Create witness for each secret value
-    w_x1 = o.random()
-    w_b2 = o.random()
-    w_x1b = o.random()
-    w_r_prime = o.random()
-    w_x0 = o.random()
-    w_x0_bar = o.random()
+    w_x1, w_b2, w_x1b, w_r_prime, w_x0, w_x0_bar = \
+            [o.random() for _ in range(6)]
 
     # Create a W for each equation we want to prove
     W_X1 = w_x1 * h
@@ -206,9 +202,11 @@ def credential_Issuing(params, pub, ciphertext, issuer_params):
     W_new_b = w_r_prime * pub + w_x1b * b + w_x0 * u
     W_Cx0 = w_x0 * g + w_x0_bar * h
 
+    # Create challenge for the proof
     c = to_challenge([g, h, pub, a, b, X1, X1b, new_a, new_b, Cx0, W_X1, W_X1b,
         W_X1b_2, Wu, W_new_a, W_new_b, W_Cx0])
 
+    # Create a responce for each secret
     r_x1 = (w_x1 - c * x1) % o
     r_b2 = (w_b2 - c * b2) % o
     r_x1b = (w_x1b - c * x1b) % o
