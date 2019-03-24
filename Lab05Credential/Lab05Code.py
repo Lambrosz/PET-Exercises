@@ -91,6 +91,22 @@ def credential_EncryptUserSecret(params, pub, priv):
     #                     pub = priv * g}
 
     ## TODO
+    
+    w_k = o.random()
+    w_v = o.random()
+    wpriv = o.random()
+
+    # This is 'a' from above
+    W_a = w_k * g
+    # This is 'b' from above
+    W_b = w_k * pub + w_v * g
+    W_pub = wpriv * g
+    
+    c = to_challenge([g, pub, a, b, W_a, W_b, W_pub])
+    
+    rk = w_k - c * k
+    rv = w_v - c * v
+    rpriv = wpriv - c * priv
 
     # Return the fresh v, the encryption of v and the proof.
     proof = (c, rk, rv, rpriv)
@@ -143,11 +159,21 @@ def credential_Issuing(params, pub, ciphertext, issuer_params):
     #     and x1b = (b * x1) mod o 
     
     # TODO 1 & 2
+    # Get random element to generate u
+    b2 = o.random()
+    u = b2 * g
+
+    X1b = (b2 * X1) # 1) Note these are capital letter X
+    x1b = (b2 * x1) % o # 2)
 
     # 3) The encrypted MAC is u, and an encrypted u_prime defined as 
     #    E( (b*x0) * g + (x1 * b * v) * g ) + E(0; r_prime)
     
     # TODO 3
+    # Encrypt using El Gamal
+    r_prime = o.random()
+    new_a = r_prime * g + x1b * a
+    new_b = r_prime * pub + x1b * b + x0 * u
 
     ciphertext = new_a, new_b
 
@@ -163,6 +189,34 @@ def credential_Issuing(params, pub, ciphertext, issuer_params):
 
     ## TODO proof
 
+    # Create witness for each secret value
+    w_x1 = o.random()
+    w_b2 = o.random()
+    w_x1b = o.random()
+    w_r_prime = o.random()
+    w_x0 = o.random()
+    w_x0_bar = o.random()
+
+    # Create a W for each equation we want to prove
+    W_X1 = w_x1 * h
+    W_X1b = w_b2 * X1
+    W_X1b_2 = w_x1b * h
+    Wu = w_b2 * g
+    W_new_a = w_r_prime * g + w_x1b * a
+    W_new_b = w_r_prime * pub + w_x1b * b + w_x0 * u
+    W_Cx0 = w_x0 * g + w_x0_bar * h
+
+    c = to_challenge([g, h, pub, a, b, X1, X1b, new_a, new_b, Cx0, W_X1, W_X1b,
+        W_X1b_2, Wu, W_new_a, W_new_b, W_Cx0])
+
+    r_x1 = (w_x1 - c * x1) % o
+    r_b2 = (w_b2 - c * b2) % o
+    r_x1b = (w_x1b - c * x1b) % o
+    rr_prime = (w_r_prime - c * r_prime) % o
+    r_x0 = (w_x0 - c * x0) % o
+    r_x0_bar = (w_x0_bar - c * x0_bar) % o
+    rs = [r_x1, r_b2, r_x1b, rr_prime, r_x0, r_x0_bar]
+    
     proof = (c, rs, X1b) # Where rs are multiple responses
 
     return u, ciphertext, proof
