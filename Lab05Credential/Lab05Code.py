@@ -198,9 +198,9 @@ def credential_Issuing(params, pub, ciphertext, issuer_params):
     W_X1b = w_b2 * X1
     W_X1b_2 = w_x1b * h
     Wu = w_b2 * g
-    W_new_a = w_r_prime * g + w_x1b * a
-    W_new_b = w_r_prime * pub + w_x1b * b + w_x0 * u
-    W_Cx0 = w_x0 * g + w_x0_bar * h
+    W_new_a = (w_r_prime * g) + (w_x1b * a)
+    W_new_b = (w_r_prime * pub) + (w_x1b * b) + (w_x0 * u)
+    W_Cx0 = (w_x0 * g) + (w_x0_bar * h)
 
     # Create challenge for the proof
     c = to_challenge([g, h, pub, a, b, X1, X1b, new_a, new_b, Cx0, W_X1, W_X1b,
@@ -279,11 +279,22 @@ def credential_show(params, issuer_pub_params, u, u_prime, v):
     #    random alpha.
     
     # TODO 1
+    # Blind the credential
+    alpha = o.random()
+    u = alpha * u
+    u_prime = alpha * u_prime
 
     # 2) Implement the "Show" protocol (p.9) for a single attribute v.
     #    Cv is a commitment to v and Cup is C_{u'} in the paper. 
 
     # TODO 2
+    # Get random values
+    z1 = o.random()
+    r = o.random()
+    
+    # Create commitment for v
+    Cv = v * u + z1 * h 
+    Cup = u_prime + r * g
 
     tag = (u, Cv, Cup)
 
@@ -294,6 +305,19 @@ def credential_show(params, issuer_pub_params, u, u_prime, v):
     #           V  = r * (-g) + z1 * X1 }
 
     ## TODO proof
+    
+    w_r = o.random()
+    w_z1 = o.random()
+    w_v = o.random()
+    
+    W_Cv = w_v * u + w_z1 * h
+    W_V = (-w_r) * g + w_z1 * X1
+    
+    c = to_challenge([g, h, Cx0, X1, u, Cv, Cup, W_Cv, W_V])
+    
+    rr = (w_r - c * r) % o
+    rz1 = (w_z1 - c * z1) % o
+    rv = (w_v - c * v) % o
 
     proof = (c, rr, rz1, rv)
     return tag, proof
@@ -304,15 +328,20 @@ def credential_show_verify(params, issuer_params, tag, proof):
     G, g, h, o = params
 
     ## Public and private issuer parameters
-    (Cx0, iparams), (sk, x0_bar) = issuer_params
+    (C_x0, iparams), (sk, x0_bar) = issuer_params
     x0, x1 = sk
     X1 = iparams
 
     # Verify proof of correct credential showing
     (c, rr, rz1, rv) = proof
-    (u, Cv, Cup) = tag
+    (u, C_v, Cup) = tag
 
     ## TODO
+    V = (x0 * u + x1 * C_v) - Cup
+    W_Cv_prime = c * C_v + (rv * u) + (rz1 * h)
+    W_V_prime = c * V + rz1 * X1 - rr * g
+    # Challenge of all public elements for proof
+    c_prime = to_challenge([g, h, C_x0, X1, u, C_v, Cup, W_Cv_prime, W_V_prime])
 
     return c == c_prime
 
@@ -329,7 +358,7 @@ def credential_show_pseudonym(params, issuer_pub_params, u, u_prime, v, service_
     G, g, h, o = params
 
     ## Public issuer parameters    
-    (Cx0, iparams) = issuer_pub_params
+    (C_x0, iparams) = issuer_pub_params
     X1 = iparams
 
     ## A stable pseudonym associated with the service 
@@ -337,6 +366,29 @@ def credential_show_pseudonym(params, issuer_pub_params, u, u_prime, v, service_
     pseudonym = v * N
 
     ## TODO (use code from above and modify as necessary!)
+
+    z1 = o.random()
+    r = o.random()
+
+    # Create credentials
+    Cv = v * u + z1 * h
+    Cup = u_prime + r * g
+    
+    tag = (u, Cv, Cup)
+    w_r, w_z1, w_v = [o.random() for _ in range(3)]
+    
+    WN = w_v * N
+    W_Cv = (w_v * u) + (w_z1 * h)
+    WV = ((-w_r) * g) + (w_z1 * X1)
+    
+    c = to_challenge([g, h, C_x0, X1, u, Cv, Cup, W_Cv, WV, pseudonym, WN])
+    
+    rr = (w_r - c * r) % o
+    rz1 = (w_z1 - c * z1) % o
+    rv = (w_v - c * v) % o
+    rN = (w_v - c * v) % o
+    
+    proof = (c, rr, rz1, rv, rN)
 
     return pseudonym, tag, proof
 
@@ -347,7 +399,7 @@ def credential_show_verify_pseudonym(params, issuer_params, pseudonym, tag, proo
     G, g, h, o = params
 
     ## The public and private issuer parameters
-    (Cx0, iparams), (sk, x0_bar) = issuer_params
+    (C_x0, iparams), (sk, x0_bar) = issuer_params
     x0, x1 = sk
     X1 = iparams
 
@@ -355,9 +407,21 @@ def credential_show_verify_pseudonym(params, issuer_params, pseudonym, tag, proo
     N = G.hash_to_point(service_name)
 
     ## Verify the correct Show protocol and the correctness of the pseudonym
-
     # TODO (use code from above and modify as necessary!)
+    
+    # Extract elements from proof and MAC tag
+    (c, rr, rz1, rv, rN) = proof
+    (u, Cv, Cup) = tag
+    
+    # Recreate V# 
+    V = ((x0 * u) + (x1 * Cv)) - Cup
+    W_Cv_prime = (c * Cv) + (rv * u) + (rz1 * h)
+    W_V_prime = (c * V) + (rz1 * X1) - (rr * g)
+    W_N_prime = (rN * N) + (c * pseudonym)
+    c_prime = to_challenge([g, h, C_x0, X1, u, Cv, Cup, W_Cv_prime, W_V_prime,
+        pseudonym, W_N_prime])
 
+    # Does this verify?
     return c == c_prime
 
 #####################################################
@@ -369,4 +433,33 @@ def credential_show_verify_pseudonym(params, issuer_params, pseudonym, tag, proo
 # What would the credential represent, and what statements
 # would need to be shown to a verifier.
 
-""" Your answer here. """
+""" Your answer here. 
+
+Let's assume that the party issuing the credentials is a Bank. 
+This bank can issue credentials which will represent some balance 
+(e.g. 10 coins) as an attribute, and send this credential to
+a user.
+
+A user can then spend this value by showing the credential to 
+a verifier (e.g. a shop). The verifier can then show this transferable 
+proof to the Bank to deposit this value into their own account.
+
+The showing protocol needs to produce a NIZK proof so that the shop
+can convince the Bank/issuer that the showing took place between them
+and the user (customer).
+
+To ensure privacy and no double-spending, the user/customer can 
+generate a unique pseudonym as well as a proof which ties this 
+to the credential of the aforementioned coin value. The bank 
+can store this on their database.
+
+To spend this electronic cash at a shop X, the user can reblind 
+the MAC and send it to the shop along with the pseudonym and a
+proof showing that this transaction is valid. The shop can 
+verify this with the Bank, and if the validation succeeds, the
+Bank can transfer the equivalent value into X's account and out
+of the account of the pseudonym associated with that coin/value.
+
+Since a unique pseudonym is generated for each coin/value, this
+scheme can also preserve privacy.
+"""
